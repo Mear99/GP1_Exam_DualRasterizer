@@ -1,8 +1,7 @@
 #pragma once
+#include "DataTypes.h"
 using namespace dae;
 class Texture;
-
-enum class Filtering { point, linear, anisotropic };
 
 class Effect
 {

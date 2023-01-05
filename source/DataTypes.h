@@ -2,29 +2,24 @@
 #include "Math.h"
 #include "vector"
 
-namespace dae 
+using namespace dae;
+
+struct Vertex_Out
 {
+	Vector4 position{};
+	Vector2 uv{};
+	Vector3 normal{};
+	Vector3 tangent{};
+	Vector3 viewDirection{};
+};
 
-	struct Vertex_Out
-	{
-		Vector4 position{};
-		Vector2 uv{};
-		Vector3 normal{};
-		Vector3 tangent{};
-		Vector3 viewDirection{};
-	};
+struct VertexUV {
+	Vector3 position;
+	Vector2 uv;
+	Vector3 normal;
+	Vector3 tangent;
+};
 
-	struct VertexColor {
-		Vector3 position;
-		ColorRGB Color;
-	};
-
-	struct VertexUV {
-		Vector3 position;
-		Vector2 uv;
-		Vector3 normal;
-		Vector3 tangent;
-	};
-
-	enum class PrimitiveTopology { TriangleList, TriangleStrip };
-}
+enum class PrimitiveTopology { TriangleList, TriangleStrip };
+enum class Filtering { point, linear, anisotropic };
+enum class RenderMode { software, hardware };

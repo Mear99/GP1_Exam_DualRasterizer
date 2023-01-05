@@ -1,71 +1,75 @@
 #pragma once
 #include "Camera.h"
 #include "Mesh.h"
+#include "DataTypes.h"
+using namespace dae;
 
 struct SDL_Window;
 struct SDL_Surface;
 
-enum class RenderMode { software, hardware };
-
-namespace dae
+class Renderer final
 {
-	class Renderer final
-	{
-	public:
-		Renderer(SDL_Window* pWindow);
-		~Renderer();
+public:
+	Renderer(SDL_Window* pWindow);
+	~Renderer();
 
-		Renderer(const Renderer&) = delete;
-		Renderer(Renderer&&) noexcept = delete;
-		Renderer& operator=(const Renderer&) = delete;
-		Renderer& operator=(Renderer&&) noexcept = delete;
+	Renderer(const Renderer&) = delete;
+	Renderer(Renderer&&) noexcept = delete;
+	Renderer& operator=(const Renderer&) = delete;
+	Renderer& operator=(Renderer&&) noexcept = delete;
 
-		void Update(const Timer* pTimer);
-		void Render();
+	void Update(const Timer* pTimer);
+	void Render();
 
-		// Controlling functions
-		void SwitchRenderMode();
+	// Controlling functions
+	void SwitchRenderMode();
 
-	private:
-		SDL_Window* m_pWindow{};
+private:
+	SDL_Window* m_pWindow{};
 
-		int m_Width{};
-		int m_Height{};
+	int m_Width{};
+	int m_Height{};
 
-		bool m_IsInitialized{ false };
+	bool m_IsInitialized{ false };
 
-		Camera m_Camera;
+	Camera m_Camera;
 
-		// Controling variables
-		RenderMode m_RenderMode{ RenderMode::software };
+	// Controling variables
+	RenderMode m_RenderMode{ RenderMode::software };
 
-		// Hardware
-		HRESULT InitializeDirectX();
-		void RenderHardware() const;
+	// Hardware
+	HRESULT InitializeDirectX();
+	void RenderHardware() const;
 
-		// Software
-		void RenderSoftware();
+	// Software
+	void RenderSoftware();
+	void InitSoftware(SDL_Window* pWindow);
+	std::vector<Vertex_Out> VertexShader(const Mesh& mesh);
+	std::vector<Vertex_Out> InterPolateAttributes(const Mesh& mesh, const std::vector<Vertex_Out>& verts);
+	void PixelShader(const Mesh& mesh, const std::vector<Vertex_Out>& verts);
 
-		// Pipeline variables
-		ID3D11Device* m_pDevice;
-		ID3D11DeviceContext* m_pDeviceContext;
-		IDXGISwapChain* m_pSwapChain;
+	// Shared
+	void InitMeshes();
 
-		ID3D11Texture2D* m_pDepthStencilBuffer;
-		ID3D11DepthStencilView* m_pDepthStencilView;
+	// Pipeline variables
+	ID3D11Device* m_pDevice;
+	ID3D11DeviceContext* m_pDeviceContext;
+	IDXGISwapChain* m_pSwapChain;
 
-		ID3D11Texture2D* m_pRenderTargetBuffer;
-		ID3D11RenderTargetView* m_pRenderTargetView;
+	ID3D11Texture2D* m_pDepthStencilBuffer;
+	ID3D11DepthStencilView* m_pDepthStencilView;
 
-		// Meshes
-		Mesh<VertexUV>* m_pVehicleMesh;
-		Mesh<VertexUV>* m_pFireMesh;
+	ID3D11Texture2D* m_pRenderTargetBuffer;
+	ID3D11RenderTargetView* m_pRenderTargetView;
 
-		// Software variables
-		SDL_Surface* m_pFrontBuffer{ nullptr };
-		SDL_Surface* m_pBackBuffer{ nullptr };
-		uint32_t* m_pBackBufferPixels{};
+	// Meshes
+	Mesh* m_pVehicleMesh;
+	Mesh* m_pFireMesh;
 
-		float* m_pDepthBufferPixels{};
-	};
-}
+	// Software variables
+	SDL_Surface* m_pFrontBuffer{ nullptr };
+	SDL_Surface* m_pBackBuffer{ nullptr };
+	uint32_t* m_pBackBufferPixels{};
+	float* m_pDepthBufferPixels{};
+};
+
