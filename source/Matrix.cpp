@@ -152,8 +152,15 @@ namespace dae {
 
 	Matrix Matrix::CreatePerspectiveFovLH(float fov, float aspect, float zn, float zf)
 	{
-		assert(false && "Not Implemented");
-		return {};
+		float A{ zf / (zf - zn) };
+		float B{ -(zf * zn) / (zf - zn) };
+
+		Vector4 xAxis{ 1 / (aspect * fov),0,0,0 };
+		Vector4 yAxis{ 0,1 / fov,0,0 };
+		Vector4 zAxis{ 0,0,A,1 };
+		Vector4 tAxis{ 0,0,B,0 };
+
+		return Matrix{ xAxis,yAxis,zAxis,tAxis };
 	}
 
 	Vector3 Matrix::GetAxisX() const
@@ -234,6 +241,14 @@ namespace dae {
 	Matrix Matrix::CreateScale(const Vector3& s)
 	{
 		return CreateScale(s[0], s[1], s[2]);
+	}
+
+	void Matrix::ConvertToFloatArray(float* array) const {
+		for (int i{ 0 }; i < 16; ++i) {
+			int row{ i / 4 };
+			int col{ i % 4 };
+			array[i] = data[row][col];
+		}
 	}
 
 #pragma region Operator Overloads

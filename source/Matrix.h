@@ -51,6 +51,8 @@ namespace dae {
 		static Matrix CreateLookAtLH(const Vector3& origin, const Vector3& forward, const Vector3& up);
 		static Matrix CreatePerspectiveFovLH(float fovy, float aspect, float zn, float zf);
 
+		void ConvertToFloatArray(float* array) const;
+
 		Vector4& operator[](int index);
 		Vector4 operator[](int index) const;
 		Matrix operator*(const Matrix& m) const;
