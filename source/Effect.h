@@ -17,7 +17,7 @@ class Effect
 		ID3D11InputLayout* GetInputLayout();
 
 		void SetWVPMatrix(const Matrix& WVPMatrix);
-		void SetSampleMethod(Filtering filter);
+		void SetSampleMethod(ID3D11SamplerState* samplerState);
 
 	protected:
 
@@ -30,9 +30,7 @@ class Effect
 		ID3D11Device* m_pDevice;
 
 		ID3DX11EffectMatrixVariable* m_pMatWorldViewProjVariable;
-
 		ID3DX11EffectSamplerVariable* m_pSamplerPointVariable;
-		ID3D11SamplerState* m_pSamplerState;
 };
 
 class Effect_Vertex : public Effect
@@ -41,7 +39,6 @@ class Effect_Vertex : public Effect
 		Effect_Vertex(ID3D11Device* pDevice);
 
 		void SetMaps(Texture* pDiffuseMap, Texture* pNormalMap, Texture* pSpecularMap, Texture* pGlossyMap);
-
 
 		void SetWorldMatrix(const Matrix& WorldMatrix);
 		void SetViewInvMatrix(const Matrix& ViewInvMatrix);

@@ -85,6 +85,10 @@ private:
 	ID3D11RasterizerState* m_pRasterState_BackCulling;
 	ID3D11RasterizerState* m_pRasterState_NoCulling;
 
+	ID3D11SamplerState* m_pPointSamplerState;
+	ID3D11SamplerState* m_pLinearSamplerState;
+	ID3D11SamplerState* m_pAnisotropicSamplerState;
+
 	// Meshes
 	Mesh* m_pVehicleMesh;
 	Mesh* m_pFireMesh;

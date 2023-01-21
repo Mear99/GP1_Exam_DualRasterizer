@@ -24,10 +24,6 @@ Effect::~Effect() {
 	m_pInputLayout->Release();
 	m_pTechnique->Release();
 	m_pEffect->Release();
-
-	if (m_pSamplerState) {
-		m_pSamplerState->Release();
-	}
 }
 
 void Effect::Initialize() {
@@ -97,40 +93,8 @@ void Effect::SetWVPMatrix(const Matrix& WVPMatrix) {
 }
 
 
-void Effect::SetSampleMethod(Filtering filter) {
-	if (m_pSamplerPointVariable) {
-
-		D3D11_SAMPLER_DESC desc{};
-		desc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
-		desc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
-		desc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
-		desc.MinLOD = -FLT_MAX;
-		desc.MaxLOD = FLT_MAX;
-		desc.MipLODBias = 0.0f;
-		desc.MaxAnisotropy = 1;
-		desc.ComparisonFunc = D3D11_COMPARISON_NEVER;
-
-		switch (filter) {
-			case Filtering::point:
-				desc.Filter = D3D11_FILTER_MIN_MAG_MIP_POINT;
-				break;
-			case Filtering::linear:
-				desc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
-				break;
-			case Filtering::anisotropic:
-				desc.Filter = D3D11_FILTER_ANISOTROPIC;
-				break;
-		}
-
-		// Release previous sampler state
-		if (m_pSamplerState) {
-			m_pSamplerState->Release();
-		}
-
-		m_pDevice->CreateSamplerState(&desc, &m_pSamplerState);
-
-		m_pSamplerPointVariable->SetSampler(0, m_pSamplerState);
-	}
+void Effect::SetSampleMethod(ID3D11SamplerState* samplerState) {
+	m_pSamplerPointVariable->SetSampler(0, samplerState);
 }
 
 // Vertex Effect

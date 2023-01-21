@@ -40,12 +40,12 @@ Mesh::Mesh(ID3D11Device* pDevice, std::vector<VertexUV> vertices, std::vector<ui
 	m_WorldMatrix = Matrix::CreateTranslation(0, 0, 0);
 }
 
-void Mesh::RenderHardware(ID3D11DeviceContext* pDeviceContext, Camera camera, Filtering filter) {
+void Mesh::RenderHardware(ID3D11DeviceContext* pDeviceContext, Camera camera, ID3D11SamplerState* samplerState) {
 
 	// Set World View Projection Matrix
 	Matrix WVPMatrix{ m_WorldMatrix * camera.viewMatrix * camera.projectionMatrix };
 	m_pEffect->SetWVPMatrix(WVPMatrix);
-	m_pEffect->SetSampleMethod(filter);
+	m_pEffect->SetSampleMethod(samplerState);
 
 	// Set other matrices
 	Effect_Vertex* pEffectVertex = dynamic_cast<Effect_Vertex*>(m_pEffect);

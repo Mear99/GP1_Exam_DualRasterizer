@@ -15,7 +15,7 @@ class Mesh
 		~Mesh();
 
 		void Update(float deltaTime);
-		void RenderHardware(ID3D11DeviceContext* pDeviceContext, Camera camera, Filtering filter);
+		void RenderHardware(ID3D11DeviceContext* pDeviceContext, Camera camera, ID3D11SamplerState* samplerState);
 
 		void SetMaps(Texture* diffuseMap, Texture* normalMap = nullptr, Texture* specularMap = nullptr, Texture* glossyMap = nullptr);
 		void SetEffect(Effect* effect);

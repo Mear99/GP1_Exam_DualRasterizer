@@ -52,6 +52,10 @@ Renderer::~Renderer()
 	m_pRasterState_FrontCulling->Release();
 	m_pRasterState_NoCulling->Release();
 
+	m_pPointSamplerState->Release();
+	m_pLinearSamplerState->Release();
+	m_pAnisotropicSamplerState->Release();
+
 	if (m_pDeviceContext) {
 		m_pDeviceContext->ClearState();
 		m_pDeviceContext->Flush();
@@ -190,25 +194,44 @@ HRESULT Renderer::InitializeDirectX()
 	m_pDeviceContext->RSSetViewports(1, &viewport);
 
 	// Culling raster states
-	D3D11_RASTERIZER_DESC desc{};
-	desc.FillMode = D3D11_FILL_SOLID;
-	desc.FrontCounterClockwise = true;
-	desc.DepthBias = 0;
-	desc.SlopeScaledDepthBias = 0.0f;
-	desc.DepthBiasClamp = 0.0f;
-	desc.DepthClipEnable = true;
-	desc.ScissorEnable = false;
-	desc.MultisampleEnable = false;
-	desc.AntialiasedLineEnable = false;
+	D3D11_RASTERIZER_DESC rasterStateDesc{};
+	rasterStateDesc.FillMode = D3D11_FILL_SOLID;
+	rasterStateDesc.FrontCounterClockwise = true;
+	rasterStateDesc.DepthBias = 0;
+	rasterStateDesc.SlopeScaledDepthBias = 0.0f;
+	rasterStateDesc.DepthBiasClamp = 0.0f;
+	rasterStateDesc.DepthClipEnable = true;
+	rasterStateDesc.ScissorEnable = false;
+	rasterStateDesc.MultisampleEnable = false;
+	rasterStateDesc.AntialiasedLineEnable = false;
 
-	desc.CullMode = D3D11_CULL_BACK;
-	m_pDevice->CreateRasterizerState(&desc, &m_pRasterState_BackCulling);
+	rasterStateDesc.CullMode = D3D11_CULL_BACK;
+	m_pDevice->CreateRasterizerState(&rasterStateDesc, &m_pRasterState_BackCulling);
 
-	desc.CullMode = D3D11_CULL_NONE;
-	m_pDevice->CreateRasterizerState(&desc, &m_pRasterState_NoCulling);
+	rasterStateDesc.CullMode = D3D11_CULL_NONE;
+	m_pDevice->CreateRasterizerState(&rasterStateDesc, &m_pRasterState_NoCulling);
 
-	desc.CullMode = D3D11_CULL_FRONT;
-	m_pDevice->CreateRasterizerState(&desc, &m_pRasterState_FrontCulling);
+	rasterStateDesc.CullMode = D3D11_CULL_FRONT;
+	m_pDevice->CreateRasterizerState(&rasterStateDesc, &m_pRasterState_FrontCulling);
+
+	D3D11_SAMPLER_DESC samplerStateDesc{};
+	samplerStateDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
+	samplerStateDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
+	samplerStateDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
+	samplerStateDesc.MinLOD = -FLT_MAX;
+	samplerStateDesc.MaxLOD = FLT_MAX;
+	samplerStateDesc.MipLODBias = 0.0f;
+	samplerStateDesc.MaxAnisotropy = 1;
+	samplerStateDesc.ComparisonFunc = D3D11_COMPARISON_NEVER;
+
+	samplerStateDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_POINT;
+	m_pDevice->CreateSamplerState(&samplerStateDesc, &m_pPointSamplerState);
+
+	samplerStateDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
+	m_pDevice->CreateSamplerState(&samplerStateDesc, &m_pLinearSamplerState);
+
+	samplerStateDesc.Filter = D3D11_FILTER_ANISOTROPIC;
+	m_pDevice->CreateSamplerState(&samplerStateDesc, &m_pAnisotropicSamplerState);
 
 	return result;
 }
@@ -236,11 +259,26 @@ void Renderer::RenderHardware() const{
 			break;
 	}
 
+	// Set right culling option
+	ID3D11SamplerState* samplerState{};
+	switch (m_Filtering)
+	{
+		case Filtering::point:
+			samplerState = m_pPointSamplerState;
+			break;
+		case Filtering::linear:
+			samplerState = m_pLinearSamplerState;
+			break;
+		case Filtering::anisotropic:
+			samplerState = m_pAnisotropicSamplerState;
+			break;
+	}
+
 	// Drawing
-	m_pVehicleMesh->RenderHardware(m_pDeviceContext, m_Camera, m_Filtering);
+	m_pVehicleMesh->RenderHardware(m_pDeviceContext, m_Camera, samplerState);
 	if (m_DrawFireMesh) {
 		m_pDeviceContext->RSSetState(m_pRasterState_NoCulling);
-		m_pFireMesh->RenderHardware(m_pDeviceContext, m_Camera, m_Filtering);
+		m_pFireMesh->RenderHardware(m_pDeviceContext, m_Camera, samplerState);
 	}
 
 	// Swap buffers
