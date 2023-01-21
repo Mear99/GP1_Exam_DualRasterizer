@@ -6,6 +6,7 @@
 
 #undef main
 #include "Renderer.h"
+#include "Effect.h"
 
 using namespace dae;
 
@@ -44,6 +45,7 @@ int main(int argc, char* args[])
 	pTimer->Start();
 	float printTimer = 0.f;
 	bool isLooping = true;
+	bool printFPS = false;
 	while (isLooping)
 	{
 		//--------- Get input events ---------
@@ -57,9 +59,43 @@ int main(int argc, char* args[])
 				break;
 			case SDL_KEYUP:
 				
-				if (e.key.keysym.scancode == SDL_SCANCODE_F1) {
-					pRenderer->SwitchRenderMode();
+				switch (e.key.keysym.scancode) {
+					case SDL_SCANCODE_F1:
+						pRenderer->SwitchRenderMode();
+						break;
+					case SDL_SCANCODE_F2:
+						pRenderer->ToggleRotation();
+						break;
+					case SDL_SCANCODE_F3:
+						pRenderer->ToggleFireMesh();
+						break;
+					case SDL_SCANCODE_F4:
+						pRenderer->SwitchFilteringMethod();
+						break;
+					case SDL_SCANCODE_F5:
+						pRenderer->ToggleShadingMode();
+						break;
+					case SDL_SCANCODE_F6:
+						pRenderer->ToggleNormalMap();
+						break;
+					case SDL_SCANCODE_F7:
+						pRenderer->ToggleDepthBuffer();
+						break;
+					case SDL_SCANCODE_F8:
+						pRenderer->ToggleBoundingBoxes();
+						break;
+					case SDL_SCANCODE_F9:
+						pRenderer->ToggleCullMode();
+						break;
+					case SDL_SCANCODE_F10:
+						pRenderer->ToggleUniformBackground();
+						break;
+					case SDL_SCANCODE_F11:
+						printFPS = !printFPS;
+						std::cout << "Print FPS " << ((printFPS) ? "ON" : "OFF") << "\n";
+						break;
 				}
+
 				break;
 			default: ;
 			}
@@ -74,7 +110,7 @@ int main(int argc, char* args[])
 		//--------- Timer ---------
 		pTimer->Update();
 		printTimer += pTimer->GetElapsed();
-		if (printTimer >= 1.f)
+		if (printTimer >= 1.f && printFPS)
 		{
 			printTimer = 0.f;
 			std::cout << "dFPS: " << pTimer->GetdFPS() << std::endl;

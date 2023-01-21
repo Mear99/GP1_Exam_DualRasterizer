@@ -40,12 +40,12 @@ Mesh::Mesh(ID3D11Device* pDevice, std::vector<VertexUV> vertices, std::vector<ui
 	m_WorldMatrix = Matrix::CreateTranslation(0, 0, 0);
 }
 
-void Mesh::RenderHardware(ID3D11DeviceContext* pDeviceContext, Camera camera) {
+void Mesh::RenderHardware(ID3D11DeviceContext* pDeviceContext, Camera camera, Filtering filter) {
 
 	// Set World View Projection Matrix
 	Matrix WVPMatrix{ m_WorldMatrix * camera.viewMatrix * camera.projectionMatrix };
 	m_pEffect->SetWVPMatrix(WVPMatrix);
-	m_pEffect->SetSampleMethod();
+	m_pEffect->SetSampleMethod(filter);
 
 	// Set other matrices
 	Effect_Vertex* pEffectVertex = dynamic_cast<Effect_Vertex*>(m_pEffect);
@@ -126,7 +126,7 @@ void Mesh::SetEffect(Effect* effect) {
 }
 
 
-ColorRGB Mesh::PixelShading(const Vertex_Out& v) const {
+ColorRGB Mesh::PixelShading(const Vertex_Out& v, ShadingMode mode, bool UseNormalMap) const {
 
 	const Vector3 lightDirection{ 0.577f, -0.577f, 0.577f };
 	const float lightIntensity{ 7.0f };
@@ -137,14 +137,15 @@ ColorRGB Mesh::PixelShading(const Vertex_Out& v) const {
 	Vector3 sampledNomal{ v.normal };
 
 	// Normal map calculations
-	Vector3 binormal{ Vector3::Cross(v.normal, v.tangent) };
-	Matrix tangentSpaceAxis{ Matrix{v.tangent, binormal, v.normal, Vector3::Zero} };
+	if (UseNormalMap) {
+		Vector3 binormal{ Vector3::Cross(v.normal, v.tangent) };
+		Matrix tangentSpaceAxis{ Matrix{v.tangent, binormal, v.normal, Vector3::Zero} };
 
-	ColorRGB normalColor{ m_pNormalMap->Sample(v.uv) };
-	sampledNomal = { normalColor.r, normalColor.g, normalColor.b };
-	sampledNomal = (2.0f * sampledNomal) - Vector3{ 1.0f, 1.0f, 1.0f };
-	sampledNomal = tangentSpaceAxis.TransformVector(sampledNomal);
-
+		ColorRGB normalColor{ m_pNormalMap->Sample(v.uv) };
+		sampledNomal = { normalColor.r, normalColor.g, normalColor.b };
+		sampledNomal = (2.0f * sampledNomal) - Vector3{ 1.0f, 1.0f, 1.0f };
+		sampledNomal = tangentSpaceAxis.TransformVector(sampledNomal);
+	}
 
 	// Cosine law
 	float observedArea{ Vector3::Dot(sampledNomal, -lightDirection) };
@@ -163,7 +164,24 @@ ColorRGB Mesh::PixelShading(const Vertex_Out& v) const {
 		float cosine{ std::max(Vector3::Dot(r,v.viewDirection),0.0f) };
 		ColorRGB specularPhong{ ks * powf(cosine,exp) };
 
-		finalColor = (diffuseColor + specularPhong) * observedArea + ambientColor;
+		// Final color
+		switch (mode) {
+		case ShadingMode::observerdArea:
+			finalColor = ColorRGB{ observedArea, observedArea,observedArea };
+			break;
+
+		case ShadingMode::diffuse:
+			finalColor = diffuseColor * observedArea;
+			break;
+
+		case ShadingMode::specular:
+			finalColor = specularPhong * observedArea;
+			break;
+
+		case ShadingMode::combined:
+			finalColor = (diffuseColor + specularPhong) * observedArea + ambientColor;
+			break;
+		}
 	}
 
 	return finalColor;

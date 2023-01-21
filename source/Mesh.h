@@ -15,12 +15,12 @@ class Mesh
 		~Mesh();
 
 		void Update(float deltaTime);
-		void RenderHardware(ID3D11DeviceContext* pDeviceContext, Camera camera);
+		void RenderHardware(ID3D11DeviceContext* pDeviceContext, Camera camera, Filtering filter);
 
 		void SetMaps(Texture* diffuseMap, Texture* normalMap = nullptr, Texture* specularMap = nullptr, Texture* glossyMap = nullptr);
 		void SetEffect(Effect* effect);
 		void SetPosition(const Vector3& pos) { m_Position = pos; }
-		ColorRGB PixelShading(const Vertex_Out& v) const;
+		ColorRGB PixelShading(const Vertex_Out& v, ShadingMode mode, bool UseNormalMap) const;
 
 		std::vector<VertexUV> GetVertices() const { return m_Vertices; }
 		std::vector<uint32_t> GetIndices() const { return m_Indices; }

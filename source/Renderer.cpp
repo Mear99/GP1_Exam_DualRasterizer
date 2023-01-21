@@ -48,6 +48,10 @@ Renderer::~Renderer()
 	m_pDepthStencilBuffer->Release();
 	m_pSwapChain->Release();
 
+	m_pRasterState_BackCulling->Release();
+	m_pRasterState_FrontCulling->Release();
+	m_pRasterState_NoCulling->Release();
+
 	if (m_pDeviceContext) {
 		m_pDeviceContext->ClearState();
 		m_pDeviceContext->Flush();
@@ -61,8 +65,10 @@ void Renderer::Update(const Timer* pTimer)
 {
 	m_Camera.Update(pTimer);
 
-	m_pVehicleMesh->Update(pTimer->GetElapsed());
-	m_pFireMesh->Update(pTimer->GetElapsed());
+	if (m_ShouldRotate) {
+		m_pVehicleMesh->Update(pTimer->GetElapsed());
+		m_pFireMesh->Update(pTimer->GetElapsed());
+	}
 }
 
 
@@ -183,6 +189,27 @@ HRESULT Renderer::InitializeDirectX()
 	viewport.MaxDepth = 1.0f;
 	m_pDeviceContext->RSSetViewports(1, &viewport);
 
+	// Culling raster states
+	D3D11_RASTERIZER_DESC desc{};
+	desc.FillMode = D3D11_FILL_SOLID;
+	desc.FrontCounterClockwise = true;
+	desc.DepthBias = 0;
+	desc.SlopeScaledDepthBias = 0.0f;
+	desc.DepthBiasClamp = 0.0f;
+	desc.DepthClipEnable = true;
+	desc.ScissorEnable = false;
+	desc.MultisampleEnable = false;
+	desc.AntialiasedLineEnable = false;
+
+	desc.CullMode = D3D11_CULL_BACK;
+	m_pDevice->CreateRasterizerState(&desc, &m_pRasterState_BackCulling);
+
+	desc.CullMode = D3D11_CULL_NONE;
+	m_pDevice->CreateRasterizerState(&desc, &m_pRasterState_NoCulling);
+
+	desc.CullMode = D3D11_CULL_FRONT;
+	m_pDevice->CreateRasterizerState(&desc, &m_pRasterState_FrontCulling);
+
 	return result;
 }
 
@@ -191,13 +218,30 @@ void Renderer::RenderHardware() const{
 		return;
 
 	// Clear buffers
-	ColorRGB clearColor{ ColorRGB(0.0f,0.0f,0.3f) };
+	ColorRGB clearColor{ (m_UseUniformBackground) ? colors::Uniform :colors::Hardware };
 	m_pDeviceContext->ClearRenderTargetView(m_pRenderTargetView, &clearColor.r);
 	m_pDeviceContext->ClearDepthStencilView(m_pDepthStencilView, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1, 0);
 
+	// Set right culling option
+	switch (m_CullMode)
+	{
+		case CullMode::back:
+			m_pDeviceContext->RSSetState(m_pRasterState_BackCulling);
+			break;
+		case CullMode::front:
+			m_pDeviceContext->RSSetState(m_pRasterState_FrontCulling);
+			break;
+		case CullMode::none:
+			m_pDeviceContext->RSSetState(m_pRasterState_NoCulling);
+			break;
+	}
+
 	// Drawing
-	m_pVehicleMesh->RenderHardware(m_pDeviceContext, m_Camera);
-	m_pFireMesh->RenderHardware(m_pDeviceContext, m_Camera);
+	m_pVehicleMesh->RenderHardware(m_pDeviceContext, m_Camera, m_Filtering);
+	if (m_DrawFireMesh) {
+		m_pDeviceContext->RSSetState(m_pRasterState_NoCulling);
+		m_pFireMesh->RenderHardware(m_pDeviceContext, m_Camera, m_Filtering);
+	}
 
 	// Swap buffers
 	m_pSwapChain->Present(0, 0);
@@ -209,7 +253,8 @@ void Renderer::RenderSoftware(){
 	SDL_LockSurface(m_pBackBuffer);
 
 	// Clear buffers
-	SDL_FillRect(m_pBackBuffer, NULL, SDL_MapRGB(m_pBackBuffer->format, 128, 128, 128));
+	ColorRGB clearColor{ (m_UseUniformBackground) ? colors::Uniform : colors::Software };
+	SDL_FillRect(m_pBackBuffer, NULL, SDL_MapRGB(m_pBackBuffer->format, Uint8(255 * clearColor.r), Uint8(255 * clearColor.g), Uint8(255 * clearColor.b)));
 	std::fill_n(m_pDepthBufferPixels, m_Width * m_Height, FLT_MAX);
 
 	// Add objects to the render vector
@@ -228,12 +273,6 @@ void Renderer::RenderSoftware(){
 	SDL_UnlockSurface(m_pBackBuffer);
 	SDL_BlitSurface(m_pBackBuffer, 0, m_pFrontBuffer, 0);
 	SDL_UpdateWindowSurface(m_pWindow);
-}
-
-
-
-void Renderer::SwitchRenderMode() {
-	m_RenderMode = (m_RenderMode == RenderMode::software) ? m_RenderMode = RenderMode::hardware : RenderMode::software;
 }
 
 void Renderer::InitSoftware(SDL_Window* pWindow) {
@@ -334,7 +373,7 @@ std::vector<Vertex_Out> Renderer::VertexShader(const Mesh& mesh) {
 void Renderer::PixelShader(const Mesh& mesh, const std::vector<Vertex_Out>& verts) {
 	
 	for (const auto& vertex : verts) {
-		ColorRGB finalColor{ mesh.PixelShading(vertex) };
+		ColorRGB finalColor{ mesh.PixelShading(vertex, m_ShadingMode, m_UseNormalMap) };
 
 		//Update Color in Buffer
 		finalColor.MaxToOne();
@@ -385,7 +424,7 @@ std::vector<Vertex_Out> Renderer::InterPolateAttributes(const Mesh& mesh, const 
 		Vertex_Out v1 = verts[index1];
 		Vertex_Out v2 = verts[index2];
 
-		// Culling triangles
+		// Culling triangles out of view
 		if (abs(v0.position.x) > 1 || abs(v0.position.y) > 1 || v0.position.z < 0 || v0.position.z > 1) {
 			continue;
 		}
@@ -393,6 +432,16 @@ std::vector<Vertex_Out> Renderer::InterPolateAttributes(const Mesh& mesh, const 
 			continue;
 		}
 		if (abs(v2.position.x) > 1 || abs(v2.position.y) > 1 || v2.position.z < 0 || v2.position.z > 1) {
+			continue;
+		}
+
+		// Cull base on cull mode
+		Vector3 TriangleNormal{ (v0.normal + v1.normal + v2.normal)/3 };
+		if ( m_CullMode == CullMode::back && Vector3::Dot(TriangleNormal, m_Camera.forward) > 0) {
+			continue;
+		}
+
+		if (m_CullMode == CullMode::front && Vector3::Dot(TriangleNormal, m_Camera.forward) < 0) {
 			continue;
 		}
 
@@ -416,6 +465,15 @@ std::vector<Vertex_Out> Renderer::InterPolateAttributes(const Mesh& mesh, const 
 			for (int py{ pMin.y }; py <= pMax.y; ++py) {
 
 				Vector2 pixel{ float(px),float(py) };
+
+				// Visualize the bouding boxes
+				if (m_VisualizeBoundingBoxes) {
+					m_pBackBufferPixels[px + (py * m_Width)] = SDL_MapRGB(m_pBackBuffer->format,
+						static_cast<uint8_t>(255),
+						static_cast<uint8_t>(255),
+						static_cast<uint8_t>(255));
+					continue;
+				}
 
 				//Side A
 				Vector2 side{ v1.position.GetXY() - v0.position.GetXY() };
@@ -447,6 +505,18 @@ std::vector<Vertex_Out> Renderer::InterPolateAttributes(const Mesh& mesh, const 
 
 						// Update Depth Buffer
 						m_pDepthBufferPixels[px + (py * m_Width)] = interpolatedDepth;
+
+						// Visualize the depth buffer
+						if (m_VisualizeDepthBuffer) {
+
+							float depthColor{ Remap(interpolatedDepth, 0.997f, 1.0f) };
+
+							m_pBackBufferPixels[px + (py * m_Width)] = SDL_MapRGB(m_pBackBuffer->format,
+								static_cast<uint8_t>(depthColor * 255),
+								static_cast<uint8_t>(depthColor * 255),
+								static_cast<uint8_t>(depthColor * 255));
+							continue;
+						}
 
 						// InterpolatedW
 						float interpolatedW{ 1.0f / (w0 * (1 / v0.position.w) + w1 * (1 / v1.position.w) + w2 * (1 / v2.position.w)) };
@@ -482,4 +552,113 @@ std::vector<Vertex_Out> Renderer::InterPolateAttributes(const Mesh& mesh, const 
 	}
 
 	return vertices_out;
+}
+
+void Renderer::SwitchRenderMode() {
+	m_RenderMode = (m_RenderMode == RenderMode::software) ? m_RenderMode = RenderMode::hardware : RenderMode::software;
+
+	std::cout << "Rasterizer mode = " << ((m_RenderMode == RenderMode::software) ? "SOFTWARE" : "HARDWARE") << "\n";
+}
+
+void Renderer::ToggleCullMode() { 
+	m_CullMode = CullMode((int(m_CullMode) + 1) % 3); 
+	
+	switch (m_CullMode)
+	{
+		std::cout << "Cull Mode = ";
+		case CullMode::back:
+			std::cout << "BACK-FACE CULLING\n";
+			break;
+		case CullMode::front:
+			std::cout << "FRONT-FACE CULLING\n";
+			break;
+		case CullMode::none:
+			std::cout << "NO CULLING\n";
+			break;
+	}
+}
+
+void Renderer::ToggleShadingMode() {
+	if (m_RenderMode == RenderMode::software) {
+		m_ShadingMode = ShadingMode((int(m_ShadingMode) + 1) % 4);
+
+		std::cout << "Shading mode = ";
+		switch (m_ShadingMode)
+		{
+			case ShadingMode::observerdArea:
+				std::cout << "OBSERVED AREA\n";
+				break;
+			case ShadingMode::diffuse:
+				std::cout << "DIFFUSE\n";
+				break;
+			case ShadingMode::specular:
+				std::cout << "SPECULAR\n";
+				break;
+			case ShadingMode::combined:
+				std::cout << "COMBINED\n";
+				break;
+		}
+	}
+}
+
+void Renderer::ToggleBoundingBoxes() {
+	if (m_RenderMode == RenderMode::software) {
+		m_VisualizeBoundingBoxes = !m_VisualizeBoundingBoxes;
+		std::cout << "Visualize Bounding Boxes " << ((m_VisualizeBoundingBoxes) ? "ON" : "OFF") << "\n";
+	}
+}
+
+void Renderer::ToggleDepthBuffer() {
+	if (m_RenderMode == RenderMode::software) {
+		m_VisualizeDepthBuffer = !m_VisualizeDepthBuffer;
+		std::cout << "Show Depth Buffer " << ((m_VisualizeDepthBuffer) ? "ON" : "OFF") << "\n";
+	}
+}
+
+void Renderer::ToggleNormalMap() {
+	if (m_RenderMode == RenderMode::software) {
+		m_UseNormalMap = !m_UseNormalMap;
+		std::cout << "Normal Map " << ((m_UseNormalMap) ? "ON" : "OFF") << "\n";
+	}
+}
+
+void Renderer::ToggleRotation() {
+	m_ShouldRotate = !m_ShouldRotate;
+	std::cout << "Vehicle Rotation " << ((m_ShouldRotate) ? "ON" : "OFF") << "\n";
+}
+
+void Renderer::ToggleUniformBackground() { 
+	m_UseUniformBackground = !m_UseUniformBackground; 
+	std::cout << "Uniform Background " << ((m_UseUniformBackground) ? "ON" : "OFF") << "\n";
+}
+
+void Renderer::ToggleFireMesh() { 
+	if (m_RenderMode == RenderMode::hardware) {
+		m_DrawFireMesh = !m_DrawFireMesh;
+		std::cout << "Fire Effect " << ((m_DrawFireMesh) ? "ON" : "OFF") << "\n";
+	}
+}
+
+float Renderer::Remap(float value, float min, float max) {
+	return (value - min) / (max - min);
+}
+
+void Renderer::SwitchFilteringMethod() {
+	if (m_RenderMode == RenderMode::hardware) {
+		m_Filtering = Filtering((int(m_Filtering) + 1) % 3);
+
+		std::cout << "Sample Filter = ";
+		switch (m_Filtering)
+		{
+		case Filtering::point:
+			std::cout << "POINT\n";
+			break;
+		case Filtering::linear:
+			std::cout << "LINEAR\n";
+			break;
+		case Filtering::anisotropic:
+			std::cout << "ANISOTROPIC\n";
+			break;
+		}
+	}
 }

@@ -66,8 +66,6 @@
     <ClCompile Include="pch.cpp" />
     <ClCompile Include="Effect.cpp" />
     <ClCompile Include="Texture.cpp" />
-    <ClCompile Include="Mesh.cpp">
-      <Filter>Math</Filter>
-    </ClCompile>
+    <ClCompile Include="Mesh.cpp" />
   </ItemGroup>
 </Project>

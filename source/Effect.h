@@ -17,8 +17,7 @@ class Effect
 		ID3D11InputLayout* GetInputLayout();
 
 		void SetWVPMatrix(const Matrix& WVPMatrix);
-		void SetSampleMethod();
-		static void SwitchFilteringMethod();
+		void SetSampleMethod(Filtering filter);
 
 	protected:
 
@@ -34,15 +33,12 @@ class Effect
 
 		ID3DX11EffectSamplerVariable* m_pSamplerPointVariable;
 		ID3D11SamplerState* m_pSamplerState;
-
-		static Filtering m_Filtering;
 };
 
 class Effect_Vertex : public Effect
 {
 	public:
 		Effect_Vertex(ID3D11Device* pDevice);
-		virtual ~Effect_Vertex();
 
 		void SetMaps(Texture* pDiffuseMap, Texture* pNormalMap, Texture* pSpecularMap, Texture* pGlossyMap);
 
@@ -68,7 +64,6 @@ class Effect_DiffuseAlpha : public Effect
 {
 	public:
 		Effect_DiffuseAlpha(ID3D11Device* pDevice);
-		virtual ~Effect_DiffuseAlpha();
 
 		void SetDiffuseMap(Texture* pDiffuseMap);
 

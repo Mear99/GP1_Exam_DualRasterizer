@@ -37,8 +37,8 @@ struct Camera
 	Matrix viewMatrix{};
 	Matrix projectionMatrix{};
 
-	const float movementSpeed{ 10 };
-	const float rotationSpeed{ 5 * TO_RADIANS };
+	const float movementSpeed{ 15 };
+	const float rotationSpeed{ 10 * TO_RADIANS };
 
 	void Initialize(float _fovAngle = 90.f, Vector3 _origin = { 0.f,0.f,0.f }, float _aspectRatio = 1.0f)
 	{

@@ -23,3 +23,5 @@ struct VertexUV {
 enum class PrimitiveTopology { TriangleList, TriangleStrip };
 enum class Filtering { point, linear, anisotropic };
 enum class RenderMode { software, hardware };
+enum class CullMode{ back, front, none};
+enum class ShadingMode { observerdArea, diffuse, specular, combined };

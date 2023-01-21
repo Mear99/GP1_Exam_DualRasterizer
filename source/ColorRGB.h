@@ -120,5 +120,9 @@ namespace dae
 		static ColorRGB White{ 1,1,1 };
 		static ColorRGB Black{ 0,0,0 };
 		static ColorRGB Gray{ 0.5f,0.5f,0.5f };
+
+		static ColorRGB Uniform{ 0.1f,0.1f,0.1f };
+		static ColorRGB Hardware{ 0.39f, 0.59f, 0.93f };
+		static ColorRGB Software{ 0.39f, 0.39f, 0.39f };
 	}
 }

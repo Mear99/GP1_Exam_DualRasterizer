@@ -2,11 +2,6 @@ float4x4 gWorldViewProjMat : WorldViewProjectionMatrix;
 Texture2D gDiffuseMap : DiffuseMap;
 SamplerState gSamPoint : SamplerPoint;
 
-RasterizerState gRasterizerState{
-	CullMode = none;
-	FrontCounterClockwise = false;
-};
-
 BlendState gBlendState {
 	BlendEnable[0] = true;
 	SrcBlend = src_alpha;
@@ -51,7 +46,6 @@ float4 PS(VS_OUTPUT input) : SV_TARGET{
 // Technique
 technique11 DefaultTechnique {
 	pass P0 {
-		SetRasterizerState(gRasterizerState);
 		SetDepthStencilState(gDepthStencilState, 0);
 		SetBlendState(gBlendState, float4(0, 0, 0, 0), 0xFFFFFFFF);
 		SetVertexShader(CompileShader(vs_5_0, VS()));

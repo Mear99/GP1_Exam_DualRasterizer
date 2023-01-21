@@ -3,8 +3,6 @@
 #include <assert.h>
 #include "Texture.h"
 
-Filtering Effect::m_Filtering{ Filtering::point };
-
 Effect::Effect(ID3D11Device* pDevice, const std::wstring& path)
 	: m_pDevice{ pDevice }
 {
@@ -26,6 +24,10 @@ Effect::~Effect() {
 	m_pInputLayout->Release();
 	m_pTechnique->Release();
 	m_pEffect->Release();
+
+	if (m_pSamplerState) {
+		m_pSamplerState->Release();
+	}
 }
 
 void Effect::Initialize() {
@@ -95,7 +97,7 @@ void Effect::SetWVPMatrix(const Matrix& WVPMatrix) {
 }
 
 
-void Effect::SetSampleMethod() {
+void Effect::SetSampleMethod(Filtering filter) {
 	if (m_pSamplerPointVariable) {
 
 		D3D11_SAMPLER_DESC desc{};
@@ -108,16 +110,16 @@ void Effect::SetSampleMethod() {
 		desc.MaxAnisotropy = 1;
 		desc.ComparisonFunc = D3D11_COMPARISON_NEVER;
 
-		switch (m_Filtering) {
-		case Filtering::point:
-			desc.Filter = D3D11_FILTER_MIN_MAG_MIP_POINT;
-			break;
-		case Filtering::linear:
-			desc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
-			break;
-		case Filtering::anisotropic:
-			desc.Filter = D3D11_FILTER_ANISOTROPIC;
-			break;
+		switch (filter) {
+			case Filtering::point:
+				desc.Filter = D3D11_FILTER_MIN_MAG_MIP_POINT;
+				break;
+			case Filtering::linear:
+				desc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
+				break;
+			case Filtering::anisotropic:
+				desc.Filter = D3D11_FILTER_ANISOTROPIC;
+				break;
 		}
 
 		// Release previous sampler state
@@ -131,21 +133,11 @@ void Effect::SetSampleMethod() {
 	}
 }
 
-void Effect::SwitchFilteringMethod() {
-	m_Filtering = Filtering((int(m_Filtering) + 1) % 3);
-}
-
 // Vertex Effect
 
 Effect_Vertex::Effect_Vertex(ID3D11Device* pDevice)
 	: Effect(pDevice, L"Resources/Vertex3D.fx")
 {}
-
-Effect_Vertex::~Effect_Vertex() {
-	if (m_pSamplerState) {
-		m_pSamplerState->Release();
-	}
-}
 
 void Effect_Vertex::BuildInputLayout() {
 
@@ -212,7 +204,7 @@ void Effect_Vertex::BuildVariables() {
 	// SamplerPoint
 	m_pSamplerPointVariable = m_pEffect->GetVariableByName("gSamPoint")->AsSampler();
 	if (!m_pSamplerPointVariable->IsValid()) {
-		std::wcout << L"m_pDiffuseMapVariable not valid!\n";
+		std::wcout << L"m_pSamplerPointVariable not valid!\n";
 	}
 
 	// World Matrix
@@ -267,12 +259,6 @@ void Effect_Vertex::SetViewInvMatrix(const Matrix& viewInvMatrix) {
 Effect_DiffuseAlpha::Effect_DiffuseAlpha(ID3D11Device* pDevice)
 	: Effect(pDevice, L"Resources/Alpha3D.fx")
 {}
-
-Effect_DiffuseAlpha::~Effect_DiffuseAlpha() {
-	if (m_pSamplerState) {
-		m_pSamplerState->Release();
-	}
-}
 
 void Effect_DiffuseAlpha::BuildInputLayout() {
 
