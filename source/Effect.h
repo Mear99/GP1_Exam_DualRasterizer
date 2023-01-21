@@ -52,7 +52,6 @@ class Effect_Vertex : public Effect
 		ID3DX11EffectShaderResourceVariable* m_pSpecularMapVariable;
 		ID3DX11EffectShaderResourceVariable* m_pGlossyMapVariable;
 
-
 		ID3DX11EffectMatrixVariable* m_pMatWorldVariable;
 		ID3DX11EffectMatrixVariable* m_pMatViewInvVariable;
 };
